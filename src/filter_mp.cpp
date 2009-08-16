@@ -18,8 +18,8 @@ void filter_channel(float ** filter, int filter_width, int filter_height,
             float val = 0;
             for (int r = 0; r < filter_height; r++) {
                 for (int c = 0; c < filter_width; c++) {
-                    int x = w - c + offset_c;
-                    int y = h - r + offset_r;
+                    int x = w + c - offset_c;
+                    int y = h + r - offset_r;
                     int i = y*image_width + x;
                     if (!(i < 0 || i >= size))
                         val += (pixels[i] * filter[r][c]);
