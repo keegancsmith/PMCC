@@ -1,11 +1,10 @@
-#include <Magick++.h>
 #include <iostream>
 #include <fstream>
 #include <cassert>
 #include <string>
+#include <climits>
 
 using namespace std;
-using namespace Magick;
 
 
 // Filter Stuff
@@ -34,58 +33,62 @@ void free_filter(float ** filter, int H) {
 
 
 // Image stuff
-unsigned char ** read_image(string path, int & W, int & H) {
-    Image image(path);
-    image.type(TrueColorType);
+void skip_comment(istream & in) {
+    in >> ws;
+    if (in.peek() == '#') {
+        in.ignore(INT_MAX, '\n');
+        skip_comment(in);
+    }
+}
 
-    W = image.size().width();
-    H = image.size().height();
+unsigned char ** read_image(string path, int & width, int & height) {
+    ifstream fin(path.c_str(), ios::binary);
 
-    Pixels view(image);
-    PixelPacket * pixels = view.get(0, 0, W, H);
+    char magic[2];
+    fin.read(magic, 2);
+    assert(magic[0] == 'P' && magic[1] == '6');
+    skip_comment(fin);
+
+    int maxval;
+    fin >> width;  skip_comment(fin);
+    fin >> height; skip_comment(fin);
+    fin >> maxval;
+    fin.read(magic, 1); // Read in single whitespace
+
+    assert(maxval == 255);
 
     // Want to store pixels per channel for better cache consistency when
     // filtering
-    int size = W * H;
-    unsigned char ** raw_pixels = new unsigned char* [3];
+    int size = width * height;
+    unsigned char ** pixels = new unsigned char* [3];
     for (int i = 0; i < 3; i++)
-        raw_pixels[i] = new unsigned char[size];
+        pixels[i] = new unsigned char[size];
 
-    unsigned char * r = raw_pixels[0];
-    unsigned char * g = raw_pixels[1];
-    unsigned char * b = raw_pixels[2];
     for (int i = 0; i < size; i++) {
-        *(r++) = pixels->red;
-        *(g++) = pixels->green;
-        *(b++) = pixels->blue;
-        pixels++;
+        char buf[3];
+        fin.read(buf, 3);
+        for (int c = 0; c < 3; c++)
+            pixels[c][i] = buf[c];
     }
 
-    return raw_pixels;
+    fin.close();
+
+    return pixels;
 }
 
-void write_image(string path, unsigned char ** raw_pixels, int W, int H) {
-    Image image(Geometry(W,H), "white");
-    image.type(TrueColorType);
-    image.modifyImage();
+void write_image(string path, unsigned char ** pixels,
+                 int width, int height) {
+    ofstream fout(path.c_str(), ios::binary);
+    fout << "P6 " << width << ' ' << height << ' ' << 255 << '\n';
 
-    Pixels view(image);
-    PixelPacket *pixels = view.get(0, 0, W, H);
-
-    unsigned char * r = raw_pixels[0];
-    unsigned char * g = raw_pixels[1];
-    unsigned char * b = raw_pixels[2];
-    int size = W * H;
+    int size = width * height;
     for (int i = 0; i < size; i++) {
-        pixels->red   = *(r++);
-        pixels->green = *(g++);
-        pixels->blue  = *(b++);
-        pixels++;
+        char buf[3];
+        for (int c = 0; c < 3; c++)
+            buf[c]= pixels[c][i];
+        fout.write((const char*)buf, 3);
     }
-
-    view.sync();
-    image.syncPixels();
-    image.write(path);
+    fout.close();
 }
 
 void free_image(unsigned char ** pixels) {
@@ -100,12 +103,15 @@ void filter_channel(float ** filter, int filter_width, int filter_height,
     int offset_r = filter_height / 2;
     int offset_c = filter_width / 2;
     int size = image_width * image_height;
+    #pragma omp parallel for
     for (int h = 0; h < image_height; h++) {
         for (int w = 0; w < image_width; w++) {
             float val = 0;
             for (int r = 0; r < filter_height; r++) {
                 for (int c = 0; c < filter_width; c++) {
-                    int i = (h - r + offset_r)*image_width + (w - c + offset_c)*image_height;
+                    int x = w - c + offset_c;
+                    int y = h - r + offset_r;
+                    int i = y*image_width + x;
                     if (!(i < 0 || i >= size))
                         val += (pixels[i] * filter[r][c]);
                 }

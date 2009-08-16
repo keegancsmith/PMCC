@@ -1,7 +1,7 @@
 CC=g++
 
-CFLAGS=-Wall -O3 `Magick++-config --cppflags --cxxflags --ldflags`
-CLIBS=-lm `Magick++-config --libs`
+CFLAGS=-Wall -O3 -fopenmp
+CLIBS=-lm
 
 filter_mp: filter_mp.cpp
 	c++ $(CFLAGS) -o filter_mp filter_mp.cpp $(CLIBS)
