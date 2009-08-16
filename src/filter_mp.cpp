@@ -132,11 +132,14 @@ void filter_image(float ** filter, int filter_width, int filter_height,
 
 int main(int argc, char **argv)
 {
-    assert(argc == 4);
+    if (argc < 3 || argc > 4) {
+        cerr << "Usage: " << argv[0] << " filter.txt input.pnm [output.pnm]\n";
+        return 1;
+    }
 
     string filter_path = argv[1];
     string image_path  = argv[2];
-    string output_path = argv[3];
+    string output_path = argv[argc == 3 ? 2 : 3];
 
     int filter_width, filter_height, image_width, image_height;
     float ** filter;
