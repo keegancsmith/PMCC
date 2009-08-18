@@ -1,0 +1,5 @@
+syntax: glob
+*.o
+*.pnm
+filter_mp
+*.pdf
