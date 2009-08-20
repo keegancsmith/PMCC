@@ -5,11 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-void filter_channel(float ** filter, int filter_width, int filter_height,
-                    unsigned char * pixels, int image_width, int image_height) {
+unsigned char * filter_channel(float ** filter,
+                               int filter_width, int filter_height,
+                               unsigned char * pixels,
+                               int image_width, int image_height) {
     int offset_r = filter_height / 2;
     int offset_c = filter_width / 2;
     int size = image_width * image_height;
+    unsigned char * filtered = calloc(size, sizeof(unsigned char));
     int h;
 
     #pragma omp parallel for
@@ -26,18 +29,24 @@ void filter_channel(float ** filter, int filter_width, int filter_height,
                         val += (pixels[i] * filter[r][c]);
                 }
             }
-            pixels[h*image_width + w] = (unsigned char)(val + 0.5);
+            filtered[h*image_width + w] = (unsigned char)(val + 0.5);
         }
     }
+
+    return filtered;
 }
 
 
-void filter_image(float ** filter, int filter_width, int filter_height,
-                  unsigned char ** pixels, int image_width, int image_height) {
+unsigned char ** filter_image(float ** filter,
+                              int filter_width, int filter_height,
+                              unsigned char ** pixels,
+                              int image_width, int image_height) {
     int i;
+    unsigned char ** filtered = calloc(3, sizeof(unsigned char *));
     for (i = 0; i < 3; i++)
-        filter_channel(filter, filter_width, filter_height,
-                       pixels[i], image_width, image_height);
+        filtered[i] = filter_channel(filter, filter_width, filter_height,
+                                     pixels[i], image_width, image_height);
+    return filtered;
 }
 
 
@@ -55,17 +64,19 @@ int main(int argc, char **argv)
     int filter_width, filter_height, image_width, image_height;
     float ** filter;
     unsigned char ** image;
+    unsigned char ** filtered;
 
     filter = read_filter(filter_path, &filter_width, &filter_height);
     image  = read_image(image_path,   &image_width,  &image_height);
 
-    filter_image(filter, filter_width, filter_height,
-                 image, image_width, image_height);
+    filtered = filter_image(filter, filter_width, filter_height,
+                            image, image_width, image_height);
 
-    write_image(output_path, image, image_width, image_height);
+    write_image(output_path, filtered, image_width, image_height);
 
     free_filter(filter, filter_height);
     free_image(image);
-    
+    free_image(filtered);
+
     return 0;
 }

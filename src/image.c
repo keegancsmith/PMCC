@@ -58,7 +58,7 @@ void skip_comment(FILE * fin) {
 }
 
 unsigned char ** read_image(const char * path, int * width, int * height) {
-    FILE * fin = fopen(path, "r");
+    FILE * fin = fopen(path, "rb");
     char magic[2];
     int maxval, size, i, c;
     unsigned char ** pixels;

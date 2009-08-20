@@ -1,6 +1,6 @@
 CC=gcc
 
-CFLAGS=-Wall -g -fopenmp `mpicc -showme:compile`
+CFLAGS=-Wall -O3 -fopenmp `mpicc -showme:compile`
 CLIBS=-lm
 
 all: filter_mp #filter_mpi
