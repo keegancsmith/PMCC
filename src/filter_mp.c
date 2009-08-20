@@ -1,23 +1,24 @@
 #include "image.h"
 
-#include <iostream>
-#include <fstream>
-#include <cassert>
-#include <string>
-
-using namespace std;
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 void filter_channel(float ** filter, int filter_width, int filter_height,
                     unsigned char * pixels, int image_width, int image_height) {
     int offset_r = filter_height / 2;
     int offset_c = filter_width / 2;
     int size = image_width * image_height;
+    int h;
+
     #pragma omp parallel for
-    for (int h = 0; h < image_height; h++) {
-        for (int w = 0; w < image_width; w++) {
+    for (h = 0; h < image_height; h++) {
+        int w, r, c;
+        for (w = 0; w < image_width; w++) {
             float val = 0;
-            for (int r = 0; r < filter_height; r++) {
-                for (int c = 0; c < filter_width; c++) {
+            for (r = 0; r < filter_height; r++) {
+                for (c = 0; c < filter_width; c++) {
                     int x = w + c - offset_c;
                     int y = h + r - offset_r;
                     int i = y*image_width + x;
@@ -33,7 +34,8 @@ void filter_channel(float ** filter, int filter_width, int filter_height,
 
 void filter_image(float ** filter, int filter_width, int filter_height,
                   unsigned char ** pixels, int image_width, int image_height) {
-    for (int i = 0; i < 3; i++)
+    int i;
+    for (i = 0; i < 3; i++)
         filter_channel(filter, filter_width, filter_height,
                        pixels[i], image_width, image_height);
 }
@@ -42,20 +44,20 @@ void filter_image(float ** filter, int filter_width, int filter_height,
 int main(int argc, char **argv)
 {
     if (argc < 3 || argc > 4) {
-        cerr << "Usage: " << argv[0] << " filter.txt input.pnm [output.pnm]\n";
+        fprintf(stderr, "Usage: %s filter.txt input.pnm [output.pnm]\n", argv[0]);
         return 1;
     }
 
-    string filter_path = argv[1];
-    string image_path  = argv[2];
-    string output_path = argv[argc == 3 ? 2 : 3];
+    char * filter_path = argv[1];
+    char * image_path  = argv[2];
+    char * output_path = argv[argc == 3 ? 2 : 3];
 
     int filter_width, filter_height, image_width, image_height;
     float ** filter;
     unsigned char ** image;
 
-    filter = read_filter(filter_path, filter_width, filter_height);
-    image  = read_image(image_path,   image_width,  image_height);
+    filter = read_filter(filter_path, &filter_width, &filter_height);
+    image  = read_image(image_path,   &image_width,  &image_height);
 
     filter_image(filter, filter_width, filter_height,
                  image, image_width, image_height);
