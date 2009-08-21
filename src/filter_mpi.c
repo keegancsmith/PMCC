@@ -15,7 +15,7 @@ typedef struct {
 
     // Box to work on in image
     int x1, y1, x2, y2;
-    
+
     int orig_x1, orig_y1;
 } job_t;
 
@@ -24,7 +24,7 @@ typedef struct {
     int width, height;
 } filter_t;
 
- 
+
 void LOG(const char* format, ...) {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -79,8 +79,16 @@ job_t send_jobs_basic(unsigned char ** image, int width, int height) {
 
     // Broadcast image
     MPI_Bcast(dimensions, 2, MPI_INT, 0, MPI_COMM_WORLD);
-    for (c = 0; c < 3; c++)
+    int hash[3];
+    for (c = 0; c < 3; c++) {
         MPI_Bcast(image[c], image_size, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+        // Simple hash
+        hash[c] = 0;
+        int i = 0;
+        for (i = 0; i < image_size; i++)
+            hash[c] ^= image[c][i];
+    }
+    LOG("Hash %d %d %d", hash[0], hash[1], hash[2]);
 
 
     // Master job
@@ -111,11 +119,19 @@ job_t get_job_basic() {
     image_size = job.width * job.height;
 
     job.image = calloc(3, sizeof(unsigned char*));
+    int hash[3];
     for (c = 0; c < 3; c++) {
         job.image[c] = calloc(image_size, sizeof(unsigned char));
         MPI_Bcast(job.image[c], image_size, MPI_UNSIGNED_CHAR, 0,
                   MPI_COMM_WORLD);
+
+        // Simple hash
+        hash[c] = 0;
+        int i = 0;
+        for (i = 0; i < image_size; i++)
+            hash[c] ^= job.image[c][i];
     }
+    LOG("Hash %d %d %d", hash[0], hash[1], hash[2]);
 
     // Calculate job
     int workers, rank;
@@ -175,6 +191,10 @@ unsigned char * filter_channel(const job_t * job,
 unsigned char ** do_job(const job_t * job, const filter_t * filter) {
     unsigned char ** result = calloc(job->width * job->height,
                                      sizeof(unsigned char*));
+    LOG("Doing job (%d, %d, %d, %d) for (%d, %d)",
+        job->x1, job->y1, job->x2, job->y2,
+        job->orig_x1, job->orig_y1);
+
     int c;
     for (c = 0; c < 3; c++)
         result[c] = filter_channel(job, filter, c);
@@ -239,6 +259,7 @@ int main (int argc, char **argv) {
 
         const char * filter_path = argv[1];
         const char * image_path  = argv[2];
+        const char * output_path = argv[argc == 3 ? 2 : 3];
 
         unsigned char ** image;
 
@@ -250,28 +271,19 @@ int main (int argc, char **argv) {
 
         result = do_job(&job, &filter);
 
-        LOG("Starting to fetch results.");
-
+        LOG("Fetching results.");
         fetch_results(result, image_width);
 
         LOG("Writing output");
-
-        const char * output_path = argv[argc == 3 ? 2 : 3];
         write_image(output_path, result, job.width, job.height);
     } else {
         // Receive filter and job
         filter = get_filter();
         job = get_job_basic();
-        LOG("Got job (%d, %d, %d, %d) for (%d, %d)", 
-            job.x1, job.y1, job.x2, job.y2,
-            job.orig_x1, job.orig_y1);
-
 
         result = do_job(&job, &filter);
 
-        LOG("Finished");
-
-        // Send results
+        LOG("Sending results");
         send_result(&job, result);
     }
 
