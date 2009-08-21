@@ -189,11 +189,11 @@ unsigned char * filter_channel(const job_t * job,
 
 
 unsigned char ** do_job(const job_t * job, const filter_t * filter) {
-    unsigned char ** result = calloc(job->width * job->height,
-                                     sizeof(unsigned char*));
     LOG("Doing job (%d, %d, %d, %d) for (%d, %d)",
         job->x1, job->y1, job->x2, job->y2,
         job->orig_x1, job->orig_y1);
+
+    unsigned char ** result = calloc(3, sizeof(unsigned char*));
 
     int c;
     for (c = 0; c < 3; c++)
@@ -288,9 +288,9 @@ int main (int argc, char **argv) {
     }
 
     // Cleanup
-    free_filter(filter.filter, filter.height);
-    free_image(job.image);
-    free_image(result);
+    /* free_filter(filter.filter, filter.height); */
+    /* free_image(job.image); */
+    /* free_image(result); */
 
     MPI_Finalize();
 
