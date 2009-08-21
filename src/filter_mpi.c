@@ -192,12 +192,12 @@ void send_result(const job_t * job, unsigned char ** result) {
     int y, c;
     for (c = 0; c < 3; c++)
         for (y = job->y1; y < job->y2; y++)
-            MPI_Send(result[c] + job->x1, w, MPI_UNSIGNED_CHAR, 0, 0,
-                     MPI_COMM_WORLD);
+            MPI_Send(result[c] + y * job->width + job->x1, w,
+                     MPI_UNSIGNED_CHAR, 0, 0, MPI_COMM_WORLD);
 }
 
 
-void fetch_result(unsigned char ** result, int worker) {
+void fetch_result(unsigned char ** result, int worker, int width) {
     int dimensions[4];
     MPI_Recv(dimensions, 4, MPI_INT, worker, 0, MPI_COMM_WORLD, 0);
     int x = dimensions[0];
@@ -205,17 +205,17 @@ void fetch_result(unsigned char ** result, int worker) {
     int c, y;
     for (c = 0; c < 3; c++)
         for (y = dimensions[1]; y < dimensions[3]; y++)
-            MPI_Recv(result[c] + x, w, MPI_UNSIGNED_CHAR, worker, 0,
-                     MPI_COMM_WORLD, 0);
+            MPI_Recv(result[c] + y * width + x, w, MPI_UNSIGNED_CHAR,
+                     worker, 0, MPI_COMM_WORLD, 0);
     LOG("Fetched %d", worker);
 }
 
 
-void fetch_results(unsigned char ** result) {
+void fetch_results(unsigned char ** result, int width) {
     int workers, i;
     MPI_Comm_size(MPI_COMM_WORLD, &workers);
     for (i = 1; i < workers; i++)
-        fetch_result(result, i);
+        fetch_result(result, i, width);
 }
 
 int main (int argc, char **argv) {
@@ -252,7 +252,7 @@ int main (int argc, char **argv) {
 
         LOG("Starting to fetch results.");
 
-        fetch_results(result);
+        fetch_results(result, image_width);
 
         LOG("Writing output");
 
