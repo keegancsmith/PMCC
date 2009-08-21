@@ -1,15 +1,15 @@
 CC=gcc
 
-CFLAGS=-Wall -O3 -fopenmp `mpicc -showme:compile`
+CFLAGS=-Wall -g -fopenmp `mpicc -showme:compile`
 CLIBS=-lm
 
-all: filter_mp gen #filter_mpi
+all: filter_mp filter_mpi gen
 
 filter_mp: filter_mp.c image.o
 	$(CC) $(CFLAGS) -o filter_mp filter_mp.c image.o $(CLIBS)
 
-filter_mpi: filter_mpi.cpp image.o
-	$(CC) $(CFLAGS) -o filter_mpi filter_mpi.cpp image.o $(CLIBS) `mpicc -showme:link`
+filter_mpi: filter_mpi.c image.o
+	$(CC) $(CFLAGS) -o filter_mpi filter_mpi.c image.o $(CLIBS) `mpicc -showme:link`
 
 gen: gen.c image.o
 	$(CC) $(CFLAGS) -o gen gen.c image.o $(CLIBS)
