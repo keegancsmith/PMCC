@@ -1,4 +1,5 @@
 #include "image.h"
+#include "filter_mpi.h"
 
 #include <mpi.h>
 
@@ -7,22 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-
-typedef struct {
-    unsigned char ** image;
-    int width, height;
-
-    // Box to work on in image
-    int x1, y1, x2, y2;
-
-    int orig_x1, orig_y1;
-} job_t;
-
-typedef struct {
-    float ** filter;
-    int width, height;
-} filter_t;
 
 
 void LOG(const char* format, ...) {
@@ -71,91 +56,6 @@ void send_filter(const filter_t * filter) {
                   0, MPI_COMM_WORLD);
 }
 
-
-job_t send_jobs_basic(unsigned char ** image, int width, int height) {
-    int dimensions[2] = {width, height};
-    int image_size = width * height;
-    int c;
-
-    // Broadcast image
-    MPI_Bcast(dimensions, 2, MPI_INT, 0, MPI_COMM_WORLD);
-    int hash[3];
-    for (c = 0; c < 3; c++) {
-        MPI_Bcast(image[c], image_size, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        // Simple hash
-        hash[c] = 0;
-        int i = 0;
-        for (i = 0; i < image_size; i++)
-            hash[c] ^= image[c][i];
-    }
-    LOG("Hash %d %d %d", hash[0], hash[1], hash[2]);
-
-
-    // Master job
-    int workers;
-    MPI_Comm_size(MPI_COMM_WORLD, &workers);
-    int rows = (height + workers - 1) / workers;
-
-    job_t job = {
-        image,
-        width, height,
-        0, 0, width, rows,
-        0, 0
-    };
-
-    return job;
-}
-
-job_t get_job_basic() {
-    job_t job;
-    int dimensions[2];
-    int image_size;
-    int c;
-
-    // Broadcast image
-    MPI_Bcast(dimensions, 2, MPI_INT, 0, MPI_COMM_WORLD);
-    job.width  = dimensions[0];
-    job.height = dimensions[1];
-    image_size = job.width * job.height;
-
-    job.image = calloc(3, sizeof(unsigned char*));
-    int hash[3];
-    for (c = 0; c < 3; c++) {
-        job.image[c] = calloc(image_size, sizeof(unsigned char));
-        MPI_Bcast(job.image[c], image_size, MPI_UNSIGNED_CHAR, 0,
-                  MPI_COMM_WORLD);
-
-        // Simple hash
-        hash[c] = 0;
-        int i = 0;
-        for (i = 0; i < image_size; i++)
-            hash[c] ^= job.image[c][i];
-    }
-    LOG("Hash %d %d %d", hash[0], hash[1], hash[2]);
-
-    // Calculate job
-    int workers, rank;
-    MPI_Comm_size(MPI_COMM_WORLD, &workers);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    int rows = (job.height + workers - 1) / workers;
-    int start = rows * rank;
-
-    if (start >= job.height) {
-        start = job.height;
-        rows = 0;
-    }
-
-    job.x1 = 0;
-    job.x2 = job.width;
-    job.y1 = start;
-    job.y2 = start + rows;
-
-    job.orig_x1 = 0;
-    job.orig_y1 = start;
-
-    return job;
-}
 
 unsigned char * filter_channel(const job_t * job,
                                const filter_t * filter,
@@ -238,7 +138,9 @@ void fetch_results(unsigned char ** result, int width) {
         fetch_result(result, i, width);
 }
 
-int main (int argc, char **argv) {
+int mpi_main(int argc, char **argv,
+             job_t (send_jobs)(filter_t *, unsigned char **, int, int),
+             job_t (get_job)(filter_t *)) {
     int rank, image_width, image_height;
     filter_t filter;
     job_t job;
@@ -267,7 +169,7 @@ int main (int argc, char **argv) {
         image = read_image(image_path, &image_width, &image_height);
 
         send_filter(&filter);
-        job = send_jobs_basic(image, image_width, image_height);
+        job = send_jobs(&filter, image, image_width, image_height);
 
         result = do_job(&job, &filter);
 
@@ -279,7 +181,7 @@ int main (int argc, char **argv) {
     } else {
         // Receive filter and job
         filter = get_filter();
-        job = get_job_basic();
+        job = get_job(&filter);
 
         result = do_job(&job, &filter);
 

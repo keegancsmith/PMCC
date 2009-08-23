@@ -76,7 +76,7 @@ unsigned char ** read_image(const char * path, int * width, int * height) {
 
     // Want to store pixels per channel for better cache consistency when
     // filtering
-    size = *width * *height;
+    size = (*width) * (*height);
 
     pixels = calloc(3, sizeof(unsigned char*));
     for (i = 0; i < 3; i++)
