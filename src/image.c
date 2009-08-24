@@ -111,8 +111,13 @@ void write_image(const char * path, unsigned char ** pixels,
 }
 
 void free_image(unsigned char ** pixels) {
+    if (!pixels)
+        return;
+
     int i;
     for (i = 0; i < 3; i++)
-        free(pixels[i]);
+        if (pixels[i])
+            free(pixels[i]);
+
     free(pixels);
 }

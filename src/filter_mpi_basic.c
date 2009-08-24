@@ -18,16 +18,8 @@ job_t send_jobs(filter_t * f, unsigned char ** image, int width, int height) {
 
     // Broadcast image
     MPI_Bcast(dimensions, 2, MPI_INT, 0, MPI_COMM_WORLD);
-    int hash[3];
-    for (c = 0; c < 3; c++) {
+    for (c = 0; c < 3; c++)
         MPI_Bcast(image[c], image_size, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
-        // Simple hash
-        hash[c] = 0;
-        int i = 0;
-        for (i = 0; i < image_size; i++)
-            hash[c] ^= image[c][i];
-    }
-    LOG("Hash %d %d %d", hash[0], hash[1], hash[2]);
 
 
     // Master job
