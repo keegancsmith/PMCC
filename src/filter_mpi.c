@@ -144,10 +144,12 @@ int mpi_main(int argc, char **argv,
     int rank, image_width, image_height;
     filter_t filter;
     job_t job;
+    double starttime;
     unsigned char ** result;
 
     MPI_Init(&argc, &argv);
 
+    starttime = MPI_Wtime();
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     // Init
@@ -193,6 +195,10 @@ int mpi_main(int argc, char **argv,
     /* free_filter(filter.filter, filter.height); */
     /* free_image(job.image); */
     /* free_image(result); */
+
+    starttime = MPI_Wtime() - starttime;
+    if (rank == 0)
+        printf("%f\n", starttime);
 
     MPI_Finalize();
 
