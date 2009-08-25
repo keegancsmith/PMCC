@@ -25,7 +25,8 @@ unsigned char * filter_channel(float ** filter,
                     int x = w + c - offset_c;
                     int y = h + r - offset_r;
                     int i = y*image_width + x;
-                    if (!(i < 0 || i >= size))
+                    if (x >= 0 && x < image_width &&
+                        y >= 0 && y < image_height)
                         val += (pixels[i] * filter[r][c]);
                 }
             }

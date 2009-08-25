@@ -76,7 +76,8 @@ unsigned char * filter_channel(const job_t * job,
                     int x = w + c - offset_c;
                     int y = h + r - offset_r;
                     int i = y * job->width + x;
-                    if (!(i < 0 || i >= size))
+                    if (x >= 0 && x < job->width &&
+                        y >= 0 && y < job->height)
                         val += (pixels[i] * filter->filter[r][c]);
                 }
             }

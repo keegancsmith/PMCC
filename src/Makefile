@@ -27,7 +27,7 @@ image.o: image.c image.h
 	$(CC) $(CFLAGS) -c image.c
 
 clean:
-	rm filter_mp filter_mpi_basic filter_mpi_ghost filter_mpi_neigh *.o
+	rm filter_mp filter_mpi_basic filter_mpi_ghost filter_mpi_neigh gen *.o
 
 check-syntax:
 	$(CC) $(CFLAGS) -Wextra -Wno-sign-compare -fsyntax-only $(CHK_SOURCES)

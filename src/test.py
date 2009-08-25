@@ -54,7 +54,7 @@ def get_filter(size):
 def test_mpi(prog, np, img_size, filter_size):
     img = get_image(img_size)
     fil = get_filter(filter_size)
-    cmd = "mpirun -np %d %s %s %s out.pnm" % (np, prog, fil, img)
+    cmd = "mpirun --hostfile hosts -np %d %s %s %s out.pnm" % (np, prog, fil, img)
 
     print
     print cmd
@@ -78,11 +78,11 @@ def test_mp(prog, np, img_size, filter_size):
     return time.time() - t
 
 
-def test_suite(progname, img_size, filter_size, nps):
+def test_suite(progname, img_size, filter_size, nps, prog_pre="./filter_"):
     test = test_mpi
     if progname is 'mp':
         test = test_mp
-    prog = './filter_' + progname
+    prog = prog_pre + progname
 
     hostname = commands.getoutput('hostname')
     results_name = '%s_%s_%sx%s_%sx%s.csv' % (hostname, progname,
@@ -121,8 +121,25 @@ def _test_chpc(progname, img_size, filter_size, np):
 
 def test_chpc():
     for progname in 'mpi_basic', 'mpi_neigh', 'mpi_ghost':
-        for img_size in 1000, 2000, 5000, 10000, 20000, 50000:
+        for img_size in 1000, 2000, 5000, 10000, 20000:
             for filter_size in 5, 25, 51:
                 for np in 20, 40, 60, 80, 100, 120:
                     print progname, img_size, filter_size, np
                     _test_chpc(progname, img_size, filter_size, np)
+
+
+def test_ec2():
+    for progname in 'mpi_basic', 'mpi_neigh', 'mpi_ghost':
+        for img_size in 1000, 2000, 5000:
+            for filter_size in 5, 25, 51:
+                print progname, img_size, filter_size
+                nps = [1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
+                test_suite(progname, img_size, filter_size, nps, 'filter_')
+
+def test_smp():
+    ul = int(commands.getoutput('cat /proc/cpuinfo | grep processor | wc -l'))
+    print ul
+    for img_size in 1000, 2000, 5000:
+        for filter_size in 5, 25, 51:
+            nps = range(1, ul+3)
+            test_suite('mp', img_size, filter_size, nps)
