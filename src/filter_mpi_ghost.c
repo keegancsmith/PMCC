@@ -62,7 +62,7 @@ job_t send_jobs(filter_t * f, unsigned char ** image, int width, int height) {
     // Send
     int orig_y2 = min(rows, height);
     int orig_y2_ghost = max(orig_y2 - f->height / 2, 0);
-    if (orig_y2 != orig_y2_ghost) {
+    if (orig_y2 != orig_y2_ghost && workers > 1) {
         LOG("Sending south ghost cell (%d, %d)", orig_y2_ghost, orig_y2);
         int offset = orig_y2_ghost * width;
         int size = (orig_y2 - orig_y2_ghost) * width;
