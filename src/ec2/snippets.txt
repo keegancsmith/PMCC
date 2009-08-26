@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Create hosts file
+ec2-describe-instances | grep running | awk '{print $5}' > hosts
+
+# Run
+mpirun --hostfile my_hostfile -np 4 my_parallel_application
+
+# Setup a cluster of machines specified in hosts
+cat hosts | while read host; do echo $host; ./remote-client-setup.sh $host; done
+
