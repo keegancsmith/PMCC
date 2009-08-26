@@ -2,6 +2,7 @@
 
 \usepackage{amsmath, amsthm, amssymb}
 \usepackage{graphicx, url}
+\usepackage{subfig}
 
 \title{Parallel Image Processing}
 \author{Keegan Smith \small $<$smtkee002$>$}
@@ -163,16 +164,135 @@ This is the machine development was done on. It contains four cores, each
 running at 2.66 GHz. It has 4 Gb of DDR2-800 RAM and a 7200rpm SATA hard
 drive. The OS is Ubuntu 9.04 Desktop Edition.
 
-\paragraph{Intel Xeon (nightmare)} 
+\paragraph{Intel Xeon (nightmare)}
 The specific machine is nightmare.cs.uct.ac.za. It has 8 cores, each running
 at 2.50 GHz. It has 10 Gb of RAM with a network mounted drive. The OS is
 Ubuntu 8.04 server edition.
 
 \paragraph{Amazon EC2 (aws)}
-These machines where used for testing MPI. The instances used where
-\emph{High-CPU Medium Instance}. These contain 1.7 GB of memory and can
-sustain transfers between each other at 50MB/s. The processor is an Intel Xeon
-with 2 cores at 2.33 GHz. Further information is available at
-\url{http://aws.amazon.com/ec2/instance-types/}
+These machines where used for testing MPI. The MPI implementation was
+OpenMPI. The instances used where \emph{High-CPU Medium Instance}. These
+contain 1.7 GB of memory and can sustain transfers between each other at
+50MB/s. The processor is an Intel Xeon with 2 cores at 2.33 GHz. Further
+information is available at \url{http://aws.amazon.com/ec2/instance-types/}
+
+\section{Results}
+
+Figure \ref{fig:blur} is an example of a blur on a non-random image. Testing
+was done on random images with random filters. An example is figure
+\ref{fig:random}. The treating of out-of-bounds values as zero can be seen by
+the artifacts at the borders.
+
+\begin{figure}
+  \centering
+  \subfloat[Input]{
+    \includegraphics[width=0.5\textwidth]{images/dog}
+  }
+  \subfloat[Output]{
+    \includegraphics[width=0.5\textwidth]{images/dog_blur}
+  }
+  \caption{An example run of the OpenMP implementation. The filter used was a 7x7
+    gaussian blur.}
+  \label{fig:blur}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \subfloat[Input]{
+    \includegraphics[width=0.5\textwidth]{images/random}
+  }
+  \subfloat[Output]{
+    \includegraphics[width=0.5\textwidth]{images/random_filtered}
+  }
+  \caption{An example run of the MPI implementation. The input image and the
+    filter used where random.}
+  \label{fig:random}
+\end{figure}
+
+\subsection{OpenMP}
+
+%% \begin{figure}
+%%   \centering
+%%   \includegraphics{images/openmp_2000_51}
+%%   \caption{OpenMP runs on fallen (4-cores) and nightmare (8-cores). Image was
+%%     2000x2000 and filter was 51x51. Expected is the expected run time based on
+%%     time taken on 1 core.}
+%%   \label{fig:openmp}
+%% \end{figure}
+
+Figure \ref{fig:mpi} graphs the run time for the different MPI
+implementations. Note that the filter is large so the computation dominates
+the runtime. So the differences in speed between different implementations is
+not noticeable since communication comprises a minuscule amount of time. A
+good indicator is that the expected time is roughly the same as the actual
+runtime in all implementations.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics{images/mpi}
+  \caption{Run times of different MPI implementations on EC2 with a large
+    filter. Image was 5000x5000 and filter was 51x51. Expected is the expected
+    run time based on time taken on 1 core for ghost.}
+  \label{fig:mpi}
+\end{figure}
+
+Figure \ref{fig:mpivsopenmp} gives a more fair representation of the
+efficiency of the different communication methods. This is because it uses a
+small filter, causing the computation to play a small part of the
+runtime. Here it is clear that the neighbour implementation causes the least
+amount of communication overhead.
+
+Figure \ref{fig:mpivsopenmp} also includes the OpenMP runtime. It is surprising
+to see that the OpenMP implementation is slower in some regards, even though
+it has no communication between threads. This may be due to the difference in
+disk I/O speeds between EC2 and the Fallen machine.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics{images/mpi_vs_openmp}
+  \caption{Run times of different MPI implementations on EC2 with a small
+    filter. Image was 5000x5000 and filter was 5x5. OpenMP run time on fallen
+    (4-core) is included for comparison.}
+  \label{fig:mpivsopenmp}
+\end{figure}
+
+The speedup graph (figure \ref{fig:speedup}) indicates that the algorithms
+parallise extremely well. The anomalies in ghost and basic can be attributed
+to the fact that this was run in a shared environment, and other users may be
+using the network device.
+
+The dip at the end for the OpenMP implementations is due to the number of
+processors being used is more than the number of cores. The OpenMP
+implementations also have a better speedup than the MPI implementations. It is
+suspected that this difference would become more apparent as the number of
+cores increase.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics{images/speedup}
+  \caption{Speedup graph on 2000x2000 image and 51x51 filter.}
+  \label{fig:speedup}
+\end{figure}
+
+The size of the filter plays a large part in the runtime. This can be seen in
+figure \ref{fig:filter}. This graph is not suprising since the runtime
+complexity of the algorithm is $O(|I| \times |F|)$. So we expect a filter of
+size $51 \times 51$ to be take four times as long as a filter of size $25
+\times 25$.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics{images/filter}
+  \caption{Relative difference in runtime for different filter sizes vs image size.}
+  \label{fig:filter}
+\end{figure}
+
+\section{Conclusion}
+
+The algorithm parallises extremely well. The OpenMP implementation was simple,
+as it was only adding one line to the serial version. The MPI version was more
+complex to code, but it has the advantage of being able to scale better than
+the OpenMP version. This is because the OpenMP requires a shared memory
+machine, while the MPI version works across clusters.
 
 \end{document}
