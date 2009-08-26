@@ -1,5 +1,11 @@
 syntax: glob
 *.o
 *.pnm
-filter_mp
 *.pdf
+*.aux
+*.log
+filter_mp
+filter_mpi_basic
+filter_mpi_ghost
+filter_mpi_neigh
+gen
